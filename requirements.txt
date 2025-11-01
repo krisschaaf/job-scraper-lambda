@@ -2,5 +2,3 @@ requests
 beautifulsoup4
 PyYAML
 boto3
-python-dotenv
-PyYAML

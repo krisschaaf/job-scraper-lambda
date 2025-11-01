@@ -1,4 +1,9 @@
-config.yaml
 venv/
 __pycache__/
-seen_jobs.json
+
+build/
+
+scripts/outputs/
+scripts/publish_lambda.sh
+
+config.yaml
