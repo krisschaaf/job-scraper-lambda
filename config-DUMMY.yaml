@@ -1,0 +1,19 @@
+search_terms:
+  - example_term_1
+  - example_term_2  
+  # add as many as you need
+
+urls:
+  - https://company1.com/careers/jobs
+  - https://company2.com/jobs
+  - https://company3.com/career     
+  # add as many as you need
+
+email:
+  sender: "your.email@gmail.com"
+  recipient: "recipient@example.com"
+  subject: "New Job Postings Found"
+  smtp_host: "smtp.gmail.com"
+  smtp_port: 587
+  smtp_user: "your.email@gmail.com"
+  smtp_password: "your-app-password"
