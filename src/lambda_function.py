@@ -5,11 +5,13 @@ from bs4 import BeautifulSoup
 import yaml
 from utils import send_email, format_email_body
 import boto3
+from urllib.parse import urljoin
 
 BUCKET = "job-scraper-seen-jobs"
 KEY = "seen_jobs.json"
 
 s3 = boto3.client("s3")
+
 
 def load_config():
     with open("config.yaml", "r") as f:
@@ -23,30 +25,50 @@ def load_seen_jobs():
     except s3.exceptions.NoSuchKey:
         return set()
 
+
 def save_seen_jobs(jobs):
     s3.put_object(Bucket=BUCKET, Key=KEY, Body=json.dumps(list(jobs), indent=2))
 
 
 def fetch_url(url, search_terms):
+    """
+    Fetch a single URL, look for search_terms in relevant tags,
+    and only return results whose links exactly match the configured URL.
+    """
     jobs_found = []
     try:
         r = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
         r.raise_for_status()
         soup = BeautifulSoup(r.text, "html.parser")
 
-        for term in search_terms:
-            matches = soup.find_all(string=lambda t: t and term.lower() in t.lower())
-            for match in matches:
-                link = match.find_parent("a")
-                if link and link.get("href"):
-                    job_url = link["href"] if link["href"].startswith("http") else url + link["href"]
+        # Liste der Tags, die Jobtitel enthalten könnten
+        relevant_tags = ["a", "h1", "h2", "h3", "span", "div"]
+
+        for tag in soup.find_all(relevant_tags):
+            text = tag.get_text(strip=True)
+            if not text:
+                continue
+
+            for term in search_terms:
+                if term.lower() in text.lower():
+                    # Wenn Tag ein Link enthält, URL extrahieren, sonst URL = config-URL
+                    link_tag = tag if tag.name == "a" and tag.get("href") else tag.find("a", href=True)
+                    if link_tag:
+                        job_url = urljoin(url, link_tag["href"])
+                        # Nur exakte URL aus der config akzeptieren
+                        if job_url.rstrip("/") != url.rstrip("/"):
+                            continue
+                    else:
+                        job_url = url  # Kein Link, nehmen wir die config-URL
+
                     jobs_found.append({
                         "term": term,
-                        "title": match.strip(),
+                        "title": text,
                         "url": job_url
                     })
     except Exception as e:
-        print(f"Fehler bei {url}: {e}")
+        print(f"Error fetching {url}: {e}")
+
     return jobs_found
 
 
@@ -64,8 +86,8 @@ def find_jobs_parallel(config):
 
     return found_jobs
 
-# --- Lambda Handler ---
 
+# --- Lambda Handler ---
 def lambda_handler(event=None, context=None):
     config = load_config()
     seen_jobs = load_seen_jobs()
