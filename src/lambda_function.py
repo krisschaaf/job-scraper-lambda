@@ -31,17 +31,12 @@ def save_seen_jobs(jobs):
 
 
 def fetch_url(url, search_terms):
-    """
-    Fetch a single URL, look for search_terms in relevant tags,
-    and only return results whose links exactly match the configured URL.
-    """
     jobs_found = []
     try:
         r = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
         r.raise_for_status()
         soup = BeautifulSoup(r.text, "html.parser")
 
-        # Liste der Tags, die Jobtitel enthalten könnten
         relevant_tags = ["a", "h1", "h2", "h3", "span", "div"]
 
         for tag in soup.find_all(relevant_tags):
@@ -51,15 +46,13 @@ def fetch_url(url, search_terms):
 
             for term in search_terms:
                 if term.lower() in text.lower():
-                    # Wenn Tag ein Link enthält, URL extrahieren, sonst URL = config-URL
                     link_tag = tag if tag.name == "a" and tag.get("href") else tag.find("a", href=True)
                     if link_tag:
                         job_url = urljoin(url, link_tag["href"])
-                        # Nur exakte URL aus der config akzeptieren
                         if job_url.rstrip("/") != url.rstrip("/"):
                             continue
                     else:
-                        job_url = url  # Kein Link, nehmen wir die config-URL
+                        job_url = url
 
                     jobs_found.append({
                         "term": term,
